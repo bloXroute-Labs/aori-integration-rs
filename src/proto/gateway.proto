@@ -1,0 +1,595 @@
+syntax = "proto3";
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/bloXroute-Labs/bxgateway-private-go/bxgateway/gateway";
+
+// The gateway service definition.
+package gateway;
+service Gateway {
+  rpc BlxrTx (BlxrTxRequest) returns (BlxrTxReply) {}
+  rpc BlxrBatchTX (BlxrBatchTXRequest) returns (BlxrBatchTXReply) {}
+  rpc Peers (PeersRequest) returns (PeersReply) {}
+  rpc TxStoreSummary(TxStoreRequest) returns (TxStoreReply) {}
+  rpc GetTx(GetBxTransactionRequest) returns (GetBxTransactionResponse) {}
+  rpc Stop (StopRequest) returns (StopReply){}
+  rpc Version (VersionRequest) returns (VersionReply){}
+  rpc Status (StatusRequest) returns (StatusResponse) {}
+  rpc Subscriptions (SubscriptionsRequest) returns (SubscriptionsReply){}
+  rpc DisconnectInboundPeer (DisconnectInboundPeerRequest) returns (DisconnectInboundPeerReply){}
+  rpc NewTxs (TxsRequest) returns (stream TxsReply){}
+  rpc PendingTxs (TxsRequest) returns (stream TxsReply){}
+  rpc NewBlocks (BlocksRequest) returns (stream BlocksReply){}
+  rpc BdnBlocks (BlocksRequest) returns (stream BlocksReply){}
+  rpc EthOnBlock (EthOnBlockRequest) returns (stream EthOnBlockReply){}
+  rpc TxReceipts (TxReceiptsRequest) returns (stream TxReceiptsReply){}
+  rpc ShortIDs (TxHashListRequest) returns (ShortIDListReply) {}
+  rpc ProposedBlock (ProposedBlockRequest) returns (ProposedBlockReply) {}
+  rpc TxsFromShortIDs (ShortIDListRequest) returns (TxListReply) {}
+  rpc BlockInfo (BlockInfoRequest) returns (BlockInfoReply) {}
+  rpc ProposedBlockStats (ProposedBlockStatsRequest) returns (ProposedBlockStatsReply) {}
+  rpc BlxrSubmitBundle (BlxrSubmitBundleRequest) returns (BlxrSubmitBundleReply) {}
+  rpc SubmitBeaconBlockSSZ (SubmitBeaconBlockSSZRequest) returns (SubmitBeaconBlockSSZReply) {} // +bx_private_code_line
+
+  //Intent Gateway functions
+  rpc SubmitIntent(SubmitIntentRequest) returns (SubmitIntentReply){}
+  rpc CancelIntent(CancelIntentRequest) returns(CancelIntentReply){}
+  rpc SubmitIntentSolution(SubmitIntentSolutionRequest) returns (SubmitIntentSolutionReply){}
+  rpc Intents(IntentsRequest) returns (stream IntentsReply){}
+  rpc IntentSolutions(IntentSolutionsRequest) returns (stream IntentSolutionsReply){}
+
+}
+
+message TxLogs {
+  string address = 1;
+  repeated string topics = 2;
+  string data = 3;
+  string block_number = 4;
+  string transaction_hash = 5;
+  string transaction_index = 6;
+  string block_hash = 7;
+  string log_index = 8;
+  bool removed = 9;
+}
+
+message TxReceiptsRequest {
+  repeated string includes = 1;
+  string auth_header = 2 [deprecated = true];
+}
+
+message TxReceiptsReply {
+  string blocK_hash = 1;
+  string block_number = 2;
+  string contract_address = 3;
+  string cumulative_gas_used = 4;
+  string effective_gas_used = 5;
+  string from = 6;
+  string gas_used = 7;
+  repeated TxLogs logs = 8;
+  string logs_bloom = 9;
+  string status = 10;
+  string to = 11;
+  string transaction_hash = 12;
+  string transaction_index = 13;
+  string type = 14;
+  string txs_count = 15;
+}
+
+message CallParams {
+  map<string, string> params = 1;
+}
+
+message EthOnBlockRequest {
+  repeated string includes = 1;
+  repeated CallParams call_params = 2;
+  string auth_header = 3 [deprecated = true];
+}
+
+message EthOnBlockReply {
+  string name = 1;
+  string response = 2;
+  string blockHeight = 3;
+  string tag = 4;
+}
+
+message BlxrSubmitBundleRequest {
+  map<string, string> mev_builders = 1;
+  repeated string transactions = 2;
+  string block_number = 3;
+  int64 min_timestamp = 4;
+  int64 max_timestamp = 5;
+  repeated string reverting_hashes = 6;
+  string uuid = 7;
+  int64 bundle_price = 8;
+  bool enforce_payout = 9;
+}
+
+message BlxrSubmitBundleReply {
+  string bundle_hash = 1;
+}
+
+message TxsRequest{
+  string filters = 1;
+  repeated string includes = 2;
+  string auth_header = 3 [deprecated = true];
+}
+
+message Tx{
+  bytes from = 12;
+  bool local_region = 14;
+  int64 time = 15;
+  bytes raw_tx = 16;
+}
+
+message AccessTuple{
+  string address = 1;
+  repeated string storage_keys = 2;
+}
+
+message TxsReply{
+  repeated Tx tx = 1;
+}
+
+message BlocksRequest{
+  repeated string includes = 1;
+  string auth_header = 2 [deprecated = true];
+}
+
+message BlockHeader{
+  string parent_hash = 1;
+  string sha3_uncles = 2;
+  string miner = 3;
+  string state_root = 4;
+  string transactions_root = 5;
+  string receipts_root = 6;
+  string logs_bloom = 7;
+  string difficulty = 8;
+  string number = 9;
+  string gas_limit = 10;
+  string gas_used = 11;
+  string timestamp = 12;
+  string extra_data = 13;
+  string mix_hash = 14;
+  string nonce = 15;
+  string base_fee_per_gas = 16;
+  string withdrawals_root = 17;
+}
+
+message FutureValidatorInfo{
+  string block_height = 1;
+  string wallet_id = 2;
+  string accessible = 3;
+}
+
+message BlocksReply{
+  string hash = 1;
+  string subscriptionID = 2 [deprecated=true];
+  BlockHeader header = 3;
+  repeated FutureValidatorInfo future_validator_info = 4;
+  repeated Tx transaction = 5;
+}
+
+message DisconnectInboundPeerRequest {
+  string peer_ip = 1;
+  int64 peer_port = 2;
+  string public_key = 3;
+  string auth_header = 4 [deprecated = true];
+}
+
+message DisconnectInboundPeerReply {
+  string status = 1;
+}
+
+message SubscriptionsRequest{
+  string auth_header = 1 [deprecated = true];
+}
+
+message Subscription{
+  string account_id = 1;
+  string tier = 2;
+  string feed_name = 3;
+  uint32 network = 4;
+  string remote_addr = 5;
+  string include = 6;
+  string filter = 7;
+  uint64 age = 8;
+  uint64 messages_sent = 9;
+}
+
+message SubscriptionsReply {
+  repeated Subscription subscriptions = 1;
+}
+
+message VersionRequest{
+  string auth_header = 1 [deprecated = true];
+}
+
+message VersionReply{
+  string version = 1;
+  string build_date = 2;
+}
+
+message StopRequest{
+  string auth_header = 1 [deprecated = true];
+}
+
+message StopReply{
+}
+
+message PeersRequest {
+  string type = 1;
+  string auth_header = 2 [deprecated = true];
+}
+
+message RateSnapshot {
+  int64 fiveMinute = 1;
+  int64 oneHour = 2;
+  int64 oneDay = 3;
+}
+
+message Peer {
+  string ip = 1;
+  string node_id = 2;
+  string type = 3;
+  string state = 4;
+  uint32 network = 5;
+  bool initiator = 6;
+  int64 min_us_from_peer = 7;
+  int64 min_us_to_peer = 8;
+  int64 slow_traffic_count = 9;
+  int64 min_us_round_trip = 10;
+  string account_id = 11;
+  string account_tier = 12;
+  int64 port = 13;
+  bool disabled = 14;
+  string mev_miner = 15;
+  string mev_builder = 16; // Deprecated
+  uint32 capability = 17;
+  int64 unpaid_tx_burst_limit = 18;
+  int64 paid_tx_burst_limit = 19;
+  RateSnapshot unpaid_tx_burst_limit_excess = 20;
+  RateSnapshot paid_tx_burst_limit_excess = 21;
+  RateSnapshot paid_tx_throughput = 22;
+  RateSnapshot unpaid_tx_throughput = 23;
+  string trusted = 24;
+  repeated string mev_builders = 25;
+  int64 new_txs = 26;
+  int64 already_seen_txs = 27;
+}
+
+message PeersReply {
+  repeated Peer peers = 1;
+}
+
+message SendTXRequest{
+}
+
+message Transaction {
+  string content = 1;
+}
+
+message Transactions {
+  repeated Transaction transactions = 1;
+}
+
+message BxTransaction {
+  string hash = 1;
+  repeated uint64 short_ids = 2;
+  google.protobuf.Timestamp add_time = 3;
+}
+
+message GetBxTransactionRequest {
+  string hash = 1;
+}
+
+message GetBxTransactionResponse {
+  BxTransaction tx = 1;
+}
+
+message TxStoreRequest {
+  string auth_header = 1 [deprecated = true];
+}
+
+message TxStoreNetworkData{
+  uint64 network = 4;
+  uint64 tx_count = 1;
+  uint64 short_id_count = 2;
+  BxTransaction oldest_tx = 3;
+}
+
+message TxStoreReply {
+  uint64 tx_count = 1;
+  uint64 short_id_count = 2;
+  repeated TxStoreNetworkData network_data = 3;
+}
+
+message TxAndSender {
+  string transaction=1;
+  bytes sender=2;
+}
+
+message BlxrBatchTXRequest {
+  repeated TxAndSender transactions_and_senders = 1;
+  bool nonce_monitoring = 2;
+  bool next_validator = 3;
+  int32 fallback = 4;
+  bool validators_only = 5;
+  bool node_validation = 6;
+  int64 sending_time = 7;
+  string auth_header = 8 [deprecated = true];
+  bool frontrunning_protection = 9;
+}
+
+message BlxrTxRequest {
+  string transaction = 1;
+  bool nonce_monitoring = 2;
+  bool next_validator = 3;
+  string auth_header = 4 [deprecated = true];
+  bool validators_only = 5;
+  int32 fallback = 6;
+  bool node_validation = 7;
+  bool frontrunning_protection = 8;
+}
+
+message BlxrTxReply {
+  string tx_hash = 1;
+}
+
+message TxIndex {
+  int32 idx = 1;
+  string tx_hash = 2;
+}
+
+message ErrorIndex {
+  int32 idx = 1;
+  string error = 2;
+}
+
+message BlxrBatchTXReply {
+  repeated TxIndex tx_hashes = 1;
+  repeated ErrorIndex tx_errors = 2;
+}
+
+message StatusRequest {
+  string auth_header = 1 [deprecated = true];
+}
+
+message AccountInfo {
+  string account_id = 1;
+  string expire_date = 2;
+}
+
+message QueuesStats {
+  uint64 txs_queue_count = 1;
+  uint64 txs_order_queue_count = 2;
+}
+
+message NodePerformance {
+  string since = 1;
+  uint32 new_blocks_received_from_blockchain_node = 2;
+  uint32 new_blocks_received_from_bdn = 3;
+  uint32 new_blocks_seen = 4;
+  uint32 new_block_messages_from_blockchain_node = 5;
+  uint32 new_block_announcements_from_blockchain_node = 6;
+  uint32 new_tx_received_from_blockchain_node = 7;
+  uint32 new_tx_received_from_bdn = 8;
+  uint32 tx_sent_to_node = 9;
+  uint32 duplicate_tx_from_node = 10;
+}
+
+message WsConnStatus {
+  string addr = 1;
+  string conn_status = 2;
+  string sync_status = 3;
+}
+
+message NodeConnStatus {
+  string conn_status = 1;
+  WsConnStatus ws_connection = 2;
+  NodePerformance node_performance = 3;
+  // Inbound is not in use and kept for back compatibility
+  bool Inbound = 4;
+  bool IsConnected = 5;
+  bool Dynamic = 6;
+  int64 Version = 7;
+  string Name = 8;
+  string ConnectedAt = 9;
+}
+
+message BDNConnStatus {
+  string status = 1;
+  string connected_at = 2;
+  ConnectionLatency latency = 3;
+}
+
+message ConnectionLatency {
+  int64 min_ms_from_peer = 7;
+  int64 min_ms_to_peer = 8;
+  int64 slow_traffic_count = 9;
+  int64 min_ms_round_trip = 10;
+}
+
+message GatewayInfo {
+  string version = 1;
+  string node_id = 2;
+  string ip_address = 3;
+  string time_started = 4;
+  string continent = 5;
+  string country = 6;
+  string network = 8;
+  string startup_params = 7;
+  string gateway_public_key = 9;
+}
+
+message StatusResponse {
+  GatewayInfo gateway_info = 2;
+  map<string, NodeConnStatus> nodes = 3;
+  map<string, BDNConnStatus> relays = 4;
+  AccountInfo account_info = 1;
+  QueuesStats queue_stats = 5;
+}
+
+message TxResult {
+  string txHash = 1;
+  string txContents = 2;
+  bool localRegion = 3;
+  string time = 4;
+  string rawTx = 5;
+}
+
+message TxHashListRequest {
+  string auth_header = 1 [deprecated = true];
+  repeated bytes txHashes = 2;
+}
+
+message ShortIDListReply {
+  repeated uint32 shortIDs = 1;
+}
+
+message ShortIDListRequest {
+  string auth_header = 1 [deprecated = true];
+  repeated uint32 shortIDs = 2;
+}
+
+message TxListReply {
+  repeated bytes txs = 1;
+}
+
+message ProposedBlockRequest {
+  string auth_header = 1 [deprecated = true];
+  string validator_http_address = 2;
+  string namespace = 3;
+  uint64 block_number = 4;
+  string prev_block_hash = 5;
+  string block_reward = 6;
+  uint64 gas_limit = 7;
+  uint64 gas_used = 8;
+  repeated CompressTx payload = 9;
+  bool process_blocks_on_gateway = 10;
+  string id = 11;
+  repeated bytes un_reverted_hashes = 12;
+}
+
+message CompressTx {
+  bytes raw_data = 1;
+  uint32 short_id = 2;
+}
+
+message ProposedBlockReply {
+  string validator_reply = 1;
+  int64 validator_reply_time = 2;
+}
+
+message BlockInfoRequest {
+  string auth_header = 1;
+
+  google.protobuf.Timestamp start_sending_time = 2;
+
+  uint64 block_number = 3;
+}
+
+message BlockInfoReply {}
+
+message ProposedBlockStatsRequest {
+  string auth_header = 1;
+
+  uint64 block_number = 2;
+}
+
+message ProposedBlockStatsReply {
+  string id = 1;
+
+  google.protobuf.Duration sending_duration = 2;
+
+  google.protobuf.Timestamp received_time = 3;
+  google.protobuf.Timestamp sent_time = 4;
+
+  string validator_reply = 5;
+  int64 validator_reply_time = 6;
+}
+
+// +bx_private_code_block_start
+//
+// WARNING!
+// The block between +bx_private_code_block_start AND +bx_private_code_block_end will be removed from public gateway source code
+// See publish_public_gateway.sh
+
+message SubmitBeaconBlockSSZRequest {
+  bytes block_ssz = 1;
+}
+
+message SubmitBeaconBlockSSZReply {}
+// +bx_private_code_block_end
+
+
+// Intent Gateway Messages
+message SubmitIntentRequest {
+  string dappAddress = 1; // PubKey
+  bytes intent = 2; //The intent payload
+  bytes hash = 3; //Keccak256Hash of the Intent bytes
+  bytes signature = 4; //ECDSA signature of hash
+  optional google.protobuf.Duration expiry_duration = 5;
+}
+
+message SubmitIntentReply {
+  string intentId = 1;
+  google.protobuf.Timestamp timestamp = 2;
+}
+
+message CancelIntentRequest {
+  string dappAddress = 1; //Address of the user submitting the intent
+  string intentId = 2; //
+  bytes hash = 3; //Keccak256Hash of the intentId bytes
+  bytes signature = 4; //ECDSA signature
+  string authHeader = 5;
+
+}
+
+message CancelIntentReply {
+  string status = 1;
+  string reason = 2;
+}
+
+message SubmitIntentSolutionRequest {
+  string solverAddress = 1;
+  string intentId = 2;
+  bytes intentSolution = 3; //The solution payload
+  bytes hash = 4; //Keccak256Hash of the IntentSolution bytes
+  bytes signature = 5; //ECDSA signature of the hash
+  string authHeader = 6;
+}
+
+message SubmitIntentSolutionReply {
+  string solutionId = 1;
+  google.protobuf.Timestamp timestamp = 2;
+}
+
+message IntentsRequest {
+  string solverAddress = 1;
+  string filters = 2;
+  bytes hash = 3; //Keccak256Hash of the solverAddress bytes
+  bytes signature = 4; //ECDSA signature
+  google.protobuf.Timestamp fromTimestamp = 5;
+  string authHeader = 6;
+}
+
+message IntentsReply {
+  string dappAddress = 1; // GUID expected
+  string intentId = 2;
+  bytes intent = 3; //The intent payload
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+message IntentSolutionsRequest {
+  string dappAddress = 1;
+  bytes hash = 2; //Keccak256Hash of the dappAddress bytes
+  bytes signature = 3; //ECDSA signature of the hash
+  string authHeader = 4;
+
+}
+
+message IntentSolutionsReply {
+  string intentId = 1;
+  bytes intentSolution = 2; //The solution payload
+}
