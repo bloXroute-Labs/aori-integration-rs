@@ -49,9 +49,12 @@ async fn main() {
         let _ = start_read_thread_from_aori(read_stream).await;
     });
 
-    let _ = process_intent_solutions(client,
-                                     bundler_pk_value.to_string(), auth_header, write_stream).await;
+    let task3 = tokio::spawn(async move {
+        let _ = process_intent_solutions(client,
+                                         bundler_pk_value.to_string(), auth_header, write_stream).await;
 
-    tokio::try_join!(task1, task2).expect("Failed to join tasks");
+    });
+
+    tokio::try_join!(task1, task2, task3).expect("Failed to join tasks");
 
 }

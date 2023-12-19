@@ -1,7 +1,7 @@
 use std::future::Future;
 use std::process::exit;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 use crate::gateway::gateway_client::GatewayClient;
 use tonic::{transport::Channel};
 use tonic::codegen::InterceptedService;
@@ -13,7 +13,7 @@ use tokio_tungstenite::MaybeTlsStream;
 use tokio_tungstenite::WebSocketStream;
 use futures::StreamExt;
 use tokio::net::TcpStream;
-use tokio_tungstenite::tungstenite::Error;
+use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::protocol::Message;
 use crate::gateway::{IntentSolutionsRequest};
 
@@ -50,10 +50,9 @@ pub async fn process_intent_solutions(
     let response = client.intent_solutions(message).await?;
     let mut streaming_body = response.into_inner();
 
-    let write_stream = Arc::new(Mutex::new(write_stream));
-
+    let write_stream_arc = Arc::new(Mutex::new(write_stream));
     while let Some(value) = streaming_body.message().await? {
-        let res = send_take_orders_aori(write_stream.clone(), value.intent_solution);
+        let res = send_take_orders_aori(write_stream_arc.clone(), value.intent_solution);
         match res.await {
             Ok(_) => {
                 println!("sent take order to aori complete");
@@ -99,7 +98,7 @@ pub async fn send_take_orders_aori(
     mut write_stream: Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>>>,
     take_order_request: Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
     let request_message = Message::Binary(take_order_request);
-    let res = write_stream.lock().unwrap().send(request_message).await;
+    let res = write_stream.lock().await.send(request_message).await;
     match res {
         Ok(_) => {
             println!("wrote take order to aori");

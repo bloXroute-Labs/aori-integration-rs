@@ -1,12 +1,9 @@
 mod types;
 mod gateway;
 mod util;
-use tokio_tungstenite::connect_async;
-use tokio_tungstenite::tungstenite::protocol::Message;
 use std::env;
 use num_bigint::BigInt;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
 use aori_types::events::OrderParameters;
 use futures::SinkExt;
 use rand::Rng;
@@ -21,7 +18,7 @@ use num_traits::cast::FromPrimitive;
 use serde_json::to_string;
 use eyre::Context;
 
-use crate::gateway::{SubmitIntentRequest, SubmitIntentSolutionReply, SubmitIntentSolutionRequest};
+use crate::gateway::{SubmitIntentSolutionRequest};
 
 #[tokio::main]
 
