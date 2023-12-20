@@ -222,6 +222,18 @@ pub struct FutureValidatorInfo {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Withdrawal {
+    #[prost(string, tag = "1")]
+    pub address: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub amount: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub index: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub validator_index: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BlocksReply {
     #[prost(string, tag = "1")]
     pub hash: ::prost::alloc::string::String,
@@ -234,6 +246,8 @@ pub struct BlocksReply {
     pub future_validator_info: ::prost::alloc::vec::Vec<FutureValidatorInfo>,
     #[prost(message, repeated, tag = "5")]
     pub transaction: ::prost::alloc::vec::Vec<Tx>,
+    #[prost(message, repeated, tag = "6")]
+    pub withdrawals: ::prost::alloc::vec::Vec<Withdrawal>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -841,8 +855,6 @@ pub struct SubmitIntentRequest {
     /// ECDSA signature of hash
     #[prost(bytes = "vec", tag = "4")]
     pub signature: ::prost::alloc::vec::Vec<u8>,
-    #[prost(message, optional, tag = "5")]
-    pub expiry_duration: ::core::option::Option<::prost_types::Duration>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -850,33 +862,7 @@ pub struct SubmitIntentReply {
     #[prost(string, tag = "1")]
     pub intent_id: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "2")]
-    pub timestamp: ::core::option::Option<::prost_types::Timestamp>,
-}
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CancelIntentRequest {
-    /// Address of the user submitting the intent
-    #[prost(string, tag = "1")]
-    pub dapp_address: ::prost::alloc::string::String,
-    ///
-    #[prost(string, tag = "2")]
-    pub intent_id: ::prost::alloc::string::String,
-    /// Keccak256Hash of the intentId bytes
-    #[prost(bytes = "vec", tag = "3")]
-    pub hash: ::prost::alloc::vec::Vec<u8>,
-    /// ECDSA signature
-    #[prost(bytes = "vec", tag = "4")]
-    pub signature: ::prost::alloc::vec::Vec<u8>,
-    #[prost(string, tag = "5")]
-    pub auth_header: ::prost::alloc::string::String,
-}
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CancelIntentReply {
-    #[prost(string, tag = "1")]
-    pub status: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub reason: ::prost::alloc::string::String,
+    pub first_seen: ::core::option::Option<::prost_types::Timestamp>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -894,8 +880,6 @@ pub struct SubmitIntentSolutionRequest {
     /// ECDSA signature of the hash
     #[prost(bytes = "vec", tag = "5")]
     pub signature: ::prost::alloc::vec::Vec<u8>,
-    #[prost(string, tag = "6")]
-    pub auth_header: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -903,15 +887,13 @@ pub struct SubmitIntentSolutionReply {
     #[prost(string, tag = "1")]
     pub solution_id: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "2")]
-    pub timestamp: ::core::option::Option<::prost_types::Timestamp>,
+    pub first_seen: ::core::option::Option<::prost_types::Timestamp>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IntentsRequest {
     #[prost(string, tag = "1")]
     pub solver_address: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub filters: ::prost::alloc::string::String,
     /// Keccak256Hash of the solverAddress bytes
     #[prost(bytes = "vec", tag = "3")]
     pub hash: ::prost::alloc::vec::Vec<u8>,
@@ -920,8 +902,6 @@ pub struct IntentsRequest {
     pub signature: ::prost::alloc::vec::Vec<u8>,
     #[prost(message, optional, tag = "5")]
     pub from_timestamp: ::core::option::Option<::prost_types::Timestamp>,
-    #[prost(string, tag = "6")]
-    pub auth_header: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -948,8 +928,6 @@ pub struct IntentSolutionsRequest {
     /// ECDSA signature of the hash
     #[prost(bytes = "vec", tag = "3")]
     pub signature: ::prost::alloc::vec::Vec<u8>,
-    #[prost(string, tag = "4")]
-    pub auth_header: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1595,31 +1573,6 @@ pub mod gateway_client {
                 .insert(GrpcMethod::new("gateway.Gateway", "SubmitIntent"));
             self.inner.unary(req, path, codec).await
         }
-        pub async fn cancel_intent(
-            &mut self,
-            request: impl tonic::IntoRequest<super::CancelIntentRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CancelIntentReply>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/gateway.Gateway/CancelIntent",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("gateway.Gateway", "CancelIntent"));
-            self.inner.unary(req, path, codec).await
-        }
         pub async fn submit_intent_solution(
             &mut self,
             request: impl tonic::IntoRequest<super::SubmitIntentSolutionRequest>,
@@ -1862,13 +1815,6 @@ pub mod gateway_server {
             request: tonic::Request<super::SubmitIntentRequest>,
         ) -> std::result::Result<
             tonic::Response<super::SubmitIntentReply>,
-            tonic::Status,
-        >;
-        async fn cancel_intent(
-            &self,
-            request: tonic::Request<super::CancelIntentRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CancelIntentReply>,
             tonic::Status,
         >;
         async fn submit_intent_solution(
@@ -3064,52 +3010,6 @@ pub mod gateway_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = SubmitIntentSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/gateway.Gateway/CancelIntent" => {
-                    #[allow(non_camel_case_types)]
-                    struct CancelIntentSvc<T: Gateway>(pub Arc<T>);
-                    impl<
-                        T: Gateway,
-                    > tonic::server::UnaryService<super::CancelIntentRequest>
-                    for CancelIntentSvc<T> {
-                        type Response = super::CancelIntentReply;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::CancelIntentRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Gateway>::cancel_intent(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = CancelIntentSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

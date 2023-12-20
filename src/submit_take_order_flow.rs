@@ -43,7 +43,7 @@ pub async fn process_intent_solutions(
     let message = IntentSolutionsRequest {
         dapp_address: dapp_address.clone(),
         hash: hash.to_vec(),
-        auth_header: auth_header,
+        // auth_header: auth_header,
         signature: signature_with_recovery,
     };
 
@@ -61,18 +61,8 @@ pub async fn process_intent_solutions(
                 eprintln!("sending take order to aori has error: {:?}", e);
             }
         }
-            // .await.expect("failed to send take order to aori");
-        // match serde_json::from_slice::<>(&) {
-        //     Ok(solution) => {
-        //
-        //     },
-        //     Err(e) => {
-        //         eprintln!("JSON deserialization error: {:?}", e);
-        //     }
-        // }
         ()
     }
-    exit(1);
     Ok(())
 }
 

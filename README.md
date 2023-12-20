@@ -21,7 +21,7 @@ This project demonstrates how we can integrate Aori api to the Bloxroute intent 
     # USED BY DAPP AND SOLVER 
     AORI_API_ENDPOINT="wss://staging.api.aori.io/"
     AORI_FEED_ENDPOINT="wss://staging.feed.aori.io/"
-    GATEWAY_URL="http://localhost:5005"
+    GATEWAY_URL="grpc://54.254.48.158:5005"
     AUTH_HEADER="....."
     BUNDLER_PK="89df9c8c1c62bec4eaf8914ebe7bbab6f440f0b4d1................"
     BUNDLER_PUBLIC_KEY="0x6D2B5eA0212c4C32A92C6faB09081e2B4AAD9558"
@@ -33,3 +33,10 @@ This project demonstrates how we can integrate Aori api to the Bloxroute intent 
     PRIVATE_KEY="b03c6b5dc8d58d3de283000bbdbb29576b158............" # this must be the same as SOLVER_PK
     NODE_URL="ws://3.238.30.234:8546"
 ```
+
+## TLS certificate
+  you need to put the certificates in `/tmp` dir so the programs can connect to the gateway
+  ```
+    let cert_path = "/tmp/external_gateway_cert.pem";
+    let key_path = "/tmp/external_gateway_key.pem";
+  ```

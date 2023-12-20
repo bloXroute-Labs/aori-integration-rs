@@ -6,10 +6,13 @@ use eyre::Context;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use tonic::codegen::InterceptedService;
-use tonic::transport::Channel;
+use tonic::transport::{Certificate, Channel};
 use gateway::gateway_client::GatewayClient;
 use crate::{gateway, types};
 use tokio_tungstenite::connect_async;
+use tonic::transport::Identity;
+use std::fs::File;
+use std::io::{self, Read};
 
 use ethers::{
     prelude::{LocalWallet, Ws},
@@ -87,8 +90,22 @@ pub async fn create_grpc_client(auth_header: String, gateway_url: String) -> Gat
     let url = rpc_opts.endpoint.clone();
     let url_boxed: Box<str> = url.into_boxed_str();
     let url_static: &'static str = Box::leak(url_boxed);
-    let channel_result = tonic::transport::Channel::from_static(url_static)
-        .connect().await;
+
+    let cert_path = "/tmp/external_gateway_cert.pem";
+    let key_path = "/tmp/external_gateway_key.pem";
+
+    let cert_content = tokio::fs::read(cert_path).await.unwrap();
+    let key_content = tokio::fs::read(key_path).await.unwrap();
+    let cert_clone = cert_content.clone();
+    let cert_clone2 = cert_content.clone();
+    let identity = Identity::from_pem(cert_clone, key_content);
+
+    let tls_config = tonic::transport::ClientTlsConfig::new()
+        .identity(identity)
+        .ca_certificate(Certificate::from_pem(cert_clone2))
+        .domain_name("blxrbdn.com");
+
+    let channel_result = tonic::transport::Channel::from_static(url_static).tls_config(tls_config).unwrap().connect().await;
 
     let client = gateway::gateway_client::GatewayClient::with_interceptor(channel_result.unwrap(), types::BlxrCredentials {
         authorization: rpc_opts.auth_header,

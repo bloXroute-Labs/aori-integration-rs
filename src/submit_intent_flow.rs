@@ -13,8 +13,7 @@ use futures::StreamExt;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::protocol::Message;
 
-pub async fn subscribe_to_make_orders(mut client: GatewayClient<InterceptedService<Channel, types::BlxrCredentials>>, bundler_private_key: String,
-                                      aori_feed_endpoint: String) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn subscribe_to_make_orders(mut client: GatewayClient<InterceptedService<Channel, types::BlxrCredentials>>, bundler_private_key: String, aori_feed_endpoint: String) -> Result<(), Box<dyn std::error::Error>> {
     println!("subscribing to {} for make order updates", aori_feed_endpoint);
     let (mut ws_stream, _) = connect_async(aori_feed_endpoint)
         .await
@@ -107,12 +106,12 @@ pub async fn submit_intent(mut client: GatewayClient<InterceptedService<Channel,
         intent: json_data,
         hash: intent_hash.to_vec(),
         signature: signature_with_recovery,
-        expiry_duration: None,
+        // expiry_duration: None,
     };
     let res = client.submit_intent(message).await;
     match res {
         Ok(_) => {
-            // println!("Submission successful");
+            println!("Submission successful");
         }
         Err(status) => {
             println!("Submission failed: {:?}", status);

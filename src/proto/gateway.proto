@@ -34,11 +34,9 @@ service Gateway {
 
   //Intent Gateway functions
   rpc SubmitIntent(SubmitIntentRequest) returns (SubmitIntentReply){}
-  rpc CancelIntent(CancelIntentRequest) returns(CancelIntentReply){}
   rpc SubmitIntentSolution(SubmitIntentSolutionRequest) returns (SubmitIntentSolutionReply){}
   rpc Intents(IntentsRequest) returns (stream IntentsReply){}
   rpc IntentSolutions(IntentSolutionsRequest) returns (stream IntentSolutionsReply){}
-
 }
 
 message TxLogs {
@@ -162,12 +160,20 @@ message FutureValidatorInfo{
   string accessible = 3;
 }
 
+message Withdrawal{
+  string address = 1;
+  string amount = 2;
+  string index = 3;
+  string validator_index = 4;
+}
+
 message BlocksReply{
   string hash = 1;
   string subscriptionID = 2 [deprecated=true];
   BlockHeader header = 3;
   repeated FutureValidatorInfo future_validator_info = 4;
   repeated Tx transaction = 5;
+  repeated Withdrawal withdrawals = 6;
 }
 
 message DisconnectInboundPeerRequest {
@@ -512,7 +518,7 @@ message ProposedBlockStatsReply {
 // +bx_private_code_block_start
 //
 // WARNING!
-// The block between +bx_private_code_block_start AND +bx_private_code_block_end will be removed from public gateway source code
+// This block will be removed from public gateway source code
 // See publish_public_gateway.sh
 
 message SubmitBeaconBlockSSZRequest {
@@ -522,33 +528,17 @@ message SubmitBeaconBlockSSZRequest {
 message SubmitBeaconBlockSSZReply {}
 // +bx_private_code_block_end
 
-
 // Intent Gateway Messages
 message SubmitIntentRequest {
   string dappAddress = 1; // PubKey
   bytes intent = 2; //The intent payload
   bytes hash = 3; //Keccak256Hash of the Intent bytes
   bytes signature = 4; //ECDSA signature of hash
-  optional google.protobuf.Duration expiry_duration = 5;
 }
 
 message SubmitIntentReply {
   string intentId = 1;
-  google.protobuf.Timestamp timestamp = 2;
-}
-
-message CancelIntentRequest {
-  string dappAddress = 1; //Address of the user submitting the intent
-  string intentId = 2; //
-  bytes hash = 3; //Keccak256Hash of the intentId bytes
-  bytes signature = 4; //ECDSA signature
-  string authHeader = 5;
-
-}
-
-message CancelIntentReply {
-  string status = 1;
-  string reason = 2;
+  google.protobuf.Timestamp first_seen = 2;
 }
 
 message SubmitIntentSolutionRequest {
@@ -557,21 +547,18 @@ message SubmitIntentSolutionRequest {
   bytes intentSolution = 3; //The solution payload
   bytes hash = 4; //Keccak256Hash of the IntentSolution bytes
   bytes signature = 5; //ECDSA signature of the hash
-  string authHeader = 6;
 }
 
 message SubmitIntentSolutionReply {
   string solutionId = 1;
-  google.protobuf.Timestamp timestamp = 2;
+  google.protobuf.Timestamp first_seen = 2;
 }
 
 message IntentsRequest {
   string solverAddress = 1;
-  string filters = 2;
   bytes hash = 3; //Keccak256Hash of the solverAddress bytes
   bytes signature = 4; //ECDSA signature
   google.protobuf.Timestamp fromTimestamp = 5;
-  string authHeader = 6;
 }
 
 message IntentsReply {
@@ -585,8 +572,6 @@ message IntentSolutionsRequest {
   string dappAddress = 1;
   bytes hash = 2; //Keccak256Hash of the dappAddress bytes
   bytes signature = 3; //ECDSA signature of the hash
-  string authHeader = 4;
-
 }
 
 message IntentSolutionsReply {

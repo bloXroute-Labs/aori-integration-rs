@@ -58,11 +58,11 @@ pub async fn subscribe_to_gateway_intents(mut client: GatewayClient<InterceptedS
     signature_with_recovery.append(&mut signature_and_recovery.1.to_vec());
     signature_with_recovery.push(signature_and_recovery.0.to_i32() as u8);
     let message = gateway::IntentsRequest {
-        auth_header: auth_header.clone(),
+        // auth_header: auth_header.clone(),
         solver_address: solver_address.clone(),
         hash: hash.to_vec(),
         signature: signature_with_recovery,
-        filters: "".to_string(),
+        // filters: "".to_string(),
         from_timestamp: None,
     };
 
@@ -146,7 +146,7 @@ async fn send_take_orders_to_gateway(
     signature_with_recovery.push(signature_and_recovery.0.to_i32() as u8);
 
     let message = SubmitIntentSolutionRequest {
-        auth_header: auth_header,
+        // auth_header: auth_header,
         solver_address:  util::public_key_to_address(pk),
         intent_id: intent_id.to_string(),
         intent_solution: solution_bytes.into_bytes(),
@@ -164,64 +164,4 @@ async fn send_take_orders_to_gateway(
         }
     }
     ()
-}
-
-
-fn add_fee(str: &str) -> String {
-    let num = f64::from_str(str).expect("Failed to parse string as float");
-    let num_with_fee = num * 1.0003;
-
-    let rounded_num = BigInt::from_f64(num_with_fee).expect("Failed to convert float to BigInt");
-
-    rounded_num.to_string()
-}
-
-fn convert_make_order_intent(solver_address: String, mut make_order_intent: AoriMakeOrder) -> AoriTakeOrderIntent {
-    let offers = &make_order_intent.result.data.order.parameters.offer;
-    make_order_intent.result.data.order.parameters.offerer = solver_address.clone();
-
-    let new_considerations: Vec<types::ConsiderationDetail> = offers
-        .iter()
-        .map(|offer| types::ConsiderationDetail {
-            item_type: offer.item_type,
-            token: offer.token.clone(),
-            identifier_or_criteria: offer.identifier_or_criteria.to_string(),
-            start_amount: offer.start_amount.to_string(),
-            recipient: solver_address.clone(),
-            end_amount: offer.end_amount.to_string(),
-        })
-        .collect();
-
-    make_order_intent.result.data.order.parameters.consideration = new_considerations;
-
-    let considerations = &make_order_intent.result.data.order.parameters.consideration;
-    let new_offers: Vec<types::OfferDetail> = considerations
-        .iter()
-        .map(|consideration| types::OfferDetail {
-            item_type: consideration.item_type,
-            token: consideration.token.clone(),
-            identifier_or_criteria: consideration.identifier_or_criteria.clone(),
-            start_amount: add_fee(&consideration.start_amount),
-            end_amount: add_fee(&consideration.end_amount),
-        })
-        .collect();
-
-    make_order_intent.result.data.order.parameters.offer = new_offers;
-
-    let take_order = types::TakeOrderRequest {
-        id: rand::thread_rng().gen_range(0..1000000),
-        jsonrpc: "2.0".to_string(),
-        method: "aori_takeOrder".to_string(),
-        params: vec![types::TakeOrderRequestParams {
-            order_id: make_order_intent.result.data.order_hash.clone(),
-            order: make_order_intent.result.data.order.clone(),
-            seat_id: 0,
-            chain_id: make_order_intent.result.data.chain_id,
-        }],
-    };
-
-    AoriTakeOrderIntent {
-        intent_id: make_order_intent.id.unwrap().to_string(),
-        take_order_request: take_order,
-    }
 }
