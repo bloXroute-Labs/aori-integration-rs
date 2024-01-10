@@ -80,7 +80,7 @@ pub async fn create_ws_client(aori_endpoint: String) -> WebSocketStream<MaybeTls
         .expect("Error connecting to the URL");
     ws_stream
 }
-pub async fn create_grpc_client(auth_header: String, gateway_url: String) -> GatewayClient<InterceptedService<Channel, types::BlxrCredentials>> {
+pub async fn create_grpc_client(auth_header: String, gateway_url: String, tls: bool) -> GatewayClient<InterceptedService<Channel, types::BlxrCredentials>> {
     let rpc_opts = types::RpcOpts {
         endpoint: String::from(gateway_url),
         disable_auth: false,
@@ -90,22 +90,28 @@ pub async fn create_grpc_client(auth_header: String, gateway_url: String) -> Gat
     let url = rpc_opts.endpoint.clone();
     let url_boxed: Box<str> = url.into_boxed_str();
     let url_static: &'static str = Box::leak(url_boxed);
+    if tls {
+        let cert_path = "/tmp/external_gateway_cert.pem";
+        let key_path = "/tmp/external_gateway_key.pem";
+        let cert_content = tokio::fs::read(cert_path).await.unwrap();
+        let key_content = tokio::fs::read(key_path).await.unwrap();
+        let cert_clone = cert_content.clone();
+        let cert_clone2 = cert_content.clone();
+        let identity = Identity::from_pem(cert_clone, key_content);
 
-    let cert_path = "/tmp/external_gateway_cert.pem";
-    let key_path = "/tmp/external_gateway_key.pem";
+        let tls_config = tonic::transport::ClientTlsConfig::new()
+            .identity(identity)
+            .ca_certificate(Certificate::from_pem(cert_clone2))
+            .domain_name("blxrbdn.com");
 
-    let cert_content = tokio::fs::read(cert_path).await.unwrap();
-    let key_content = tokio::fs::read(key_path).await.unwrap();
-    let cert_clone = cert_content.clone();
-    let cert_clone2 = cert_content.clone();
-    let identity = Identity::from_pem(cert_clone, key_content);
+        let channel_result = tonic::transport::Channel::from_static(url_static).tls_config(tls_config).unwrap().connect().await;
+        let client = gateway::gateway_client::GatewayClient::with_interceptor(channel_result.unwrap(), types::BlxrCredentials {
+            authorization: rpc_opts.auth_header,
+        });
+        return client
+    }
 
-    let tls_config = tonic::transport::ClientTlsConfig::new()
-        .identity(identity)
-        .ca_certificate(Certificate::from_pem(cert_clone2))
-        .domain_name("blxrbdn.com");
-
-    let channel_result = tonic::transport::Channel::from_static(url_static).tls_config(tls_config).unwrap().connect().await;
+    let channel_result = tonic::transport::Channel::from_static(url_static).connect().await;
 
     let client = gateway::gateway_client::GatewayClient::with_interceptor(channel_result.unwrap(), types::BlxrCredentials {
         authorization: rpc_opts.auth_header,

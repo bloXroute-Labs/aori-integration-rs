@@ -50,7 +50,7 @@ pub struct ResultData {
 pub struct OrderData {
     pub order: AoriOrderDetail,
     #[serde(rename = "orderHash")]
-    pub(crate) order_hash: String,
+    pub order_hash: String,
     #[serde(rename = "inputToken")]
     input_token: String,
     #[serde(rename = "outputToken")]
@@ -61,7 +61,7 @@ pub struct OrderData {
     output_amount: String,
     rate: f64,
     #[serde(rename = "chainId")]
-    pub(crate) chain_id: i32,
+    pub chain_id: i32,
     active: bool,
     #[serde(rename = "createdAt")]
     created_at: i64,

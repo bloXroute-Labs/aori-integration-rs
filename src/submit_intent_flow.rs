@@ -6,7 +6,7 @@ use tonic::{transport::Channel, Status, Request, Response};
 use tonic::codegen::InterceptedService;
 use crate::{types, util};
 use aori_requests::requests::create_subscribe_orderbook_payload;
-use crate::gateway::{SubmitIntentReply, SubmitIntentRequest};
+use crate::gateway::{SubmitIntentReply, SubmitIntentRequest, SubmitIntentRequestData};
 use sha3::{Digest, Keccak256};
 use futures::SinkExt;
 use futures::StreamExt;
@@ -102,11 +102,15 @@ pub async fn submit_intent(mut client: GatewayClient<InterceptedService<Channel,
     signature_with_recovery.push(signature_and_recovery.0.to_i32() as u8);
 
     let message = SubmitIntentRequest {
-        dapp_address:  util::public_key_to_address(pk),
-        intent: json_data,
+        sender_address: util::public_key_to_address(pk),
+        data: Some(SubmitIntentRequestData{
+            dapp_address:  util::public_key_to_address(pk),
+            nonce: "1".to_string(),
+            intent: json_data,
+            expiry_duration: None,
+        }),
         hash: intent_hash.to_vec(),
         signature: signature_with_recovery,
-        // expiry_duration: None,
     };
     let res = client.submit_intent(message).await;
     match res {

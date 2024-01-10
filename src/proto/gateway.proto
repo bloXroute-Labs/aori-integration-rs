@@ -33,10 +33,13 @@ service Gateway {
   rpc SubmitBeaconBlockSSZ (SubmitBeaconBlockSSZRequest) returns (SubmitBeaconBlockSSZReply) {} // +bx_private_code_line
 
   //Intent Gateway functions
+  rpc UpdateIntent(UpdateIntentRequest) returns (UpdateIntentReply){}
   rpc SubmitIntent(SubmitIntentRequest) returns (SubmitIntentReply){}
+  rpc CancelIntent(CancelIntentRequest) returns(CancelIntentReply){}
   rpc SubmitIntentSolution(SubmitIntentSolutionRequest) returns (SubmitIntentSolutionReply){}
   rpc Intents(IntentsRequest) returns (stream IntentsReply){}
   rpc IntentSolutions(IntentSolutionsRequest) returns (stream IntentSolutionsReply){}
+
 }
 
 message TxLogs {
@@ -201,6 +204,7 @@ message Subscription{
   string filter = 7;
   uint64 age = 8;
   uint64 messages_sent = 9;
+  string conn_type = 10;
 }
 
 message SubscriptionsReply {
@@ -529,24 +533,83 @@ message SubmitBeaconBlockSSZReply {}
 // +bx_private_code_block_end
 
 // Intent Gateway Messages
-message SubmitIntentRequest {
-  string dappAddress = 1; // PubKey
-  bytes intent = 2; //The intent payload
-  bytes hash = 3; //Keccak256Hash of the Intent bytes
-  bytes signature = 4; //ECDSA signature of hash
+message SubmitIntentRequestData {
+  string dappAddress = 1;
+  string nonce = 2;
+  bytes intent = 3;
+  optional google.protobuf.Duration expiry_duration = 4;
 }
+
+message SubmitIntentRequest {
+  string senderAddress = 1;
+  bytes hash = 2; //Keccak256Hash of the Intent bytes
+  bytes signature = 3; //ECDSA signature of hash
+  SubmitIntentRequestData data = 4;
+}
+
 
 message SubmitIntentReply {
   string intentId = 1;
   google.protobuf.Timestamp first_seen = 2;
 }
 
-message SubmitIntentSolutionRequest {
-  string solverAddress = 1;
+enum IntentStatus {
+  CANCELLED = 0;
+  ACTIVE = 1;
+  EXPIRED = 2;
+  FULFILLED = 3;
+  SOLUTION_SUBMITTED = 4;
+}
+
+message UpdateIntentRequestData {
+  string intentId = 1;
+  string nonce = 2;
+  IntentStatus status = 3; // The value of the Intent Status that is being requested
+  string dappAddress = 4; //Address of the user submitting the intent
+}
+
+message UpdateIntentRequest {
+  string senderAddress = 1;
+  UpdateIntentRequestData data = 2;
+  bytes hash = 3; //Keccak256Hash of the intentId bytes
+  bytes signature = 4; //ECDSA signature
+}
+
+message UpdateIntentReply {
+  string intentId = 1;
+  IntentStatus status = 2; // The status of the intent
+}
+
+message CancelIntentRequestData {
+  string dappAddress = 1; //Address of the user submitting the intent
   string intentId = 2;
-  bytes intentSolution = 3; //The solution payload
-  bytes hash = 4; //Keccak256Hash of the IntentSolution bytes
-  bytes signature = 5; //ECDSA signature of the hash
+  string nonce = 3;
+}
+
+message CancelIntentRequest {
+  string senderAddress = 1;
+  CancelIntentRequestData data = 2;
+  bytes hash = 3; //Keccak256Hash of the intentId bytes
+  bytes signature = 4; //ECDSA signature
+}
+
+message CancelIntentReply {
+  string status = 1;
+  string reason = 2;
+}
+
+message SubmitIntentSolutionRequestData {
+  string solverAddress = 1;
+  string nonce = 2;
+  string intentId = 3;
+  bytes intentSolution = 4;
+}
+
+message SubmitIntentSolutionRequest {
+  string senderAddress = 1;
+  bytes hash = 2; //Keccak256Hash of the IntentSolution bytes
+  bytes signature = 3; //ECDSA signature of the hash
+  SubmitIntentSolutionRequestData data = 4;
 }
 
 message SubmitIntentSolutionReply {
@@ -554,11 +617,18 @@ message SubmitIntentSolutionReply {
   google.protobuf.Timestamp first_seen = 2;
 }
 
-message IntentsRequest {
+message IntentsRequestData {
   string solverAddress = 1;
-  bytes hash = 3; //Keccak256Hash of the solverAddress bytes
-  bytes signature = 4; //ECDSA signature
-  google.protobuf.Timestamp fromTimestamp = 5;
+  string nonce = 2;
+  string filters = 3;
+  google.protobuf.Timestamp fromTimestamp = 4;
+}
+
+message IntentsRequest {
+  string senderAddress = 1;
+  bytes hash = 2; // Keccak256Hash of the solverAddress bytes
+  bytes signature = 3; // ECDSA signature
+  IntentsRequestData data = 4;
 }
 
 message IntentsReply {
@@ -566,12 +636,19 @@ message IntentsReply {
   string intentId = 2;
   bytes intent = 3; //The intent payload
   google.protobuf.Timestamp timestamp = 4;
+  IntentStatus status = 5;
+}
+
+message IntentSolutionsRequestData {
+  string dappAddress = 1;
+  string nonce = 2;
 }
 
 message IntentSolutionsRequest {
-  string dappAddress = 1;
+  string senderAddress = 1;
   bytes hash = 2; //Keccak256Hash of the dappAddress bytes
   bytes signature = 3; //ECDSA signature of the hash
+  IntentSolutionsRequestData data = 4;
 }
 
 message IntentSolutionsReply {

@@ -34,7 +34,7 @@ async fn main() {
     let aori_feed_endpoint = std::env::var("AORI_FEED_ENDPOINT").unwrap();
     let gateway_url = std::env::var("GATEWAY_URL").unwrap();
 
-    let client =  util::create_grpc_client(auth_header.clone(), gateway_url).await;
+    let client =  util::create_grpc_client(auth_header.clone(), gateway_url, false).await;
     let cl2 = client.clone();
 
     let ws_stream = util::create_ws_client(aori_endpoint).await;

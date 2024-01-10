@@ -33,10 +33,3 @@ This project demonstrates how we can integrate Aori api to the Bloxroute intent 
     PRIVATE_KEY="b03c6b5dc8d58d3de283000bbdbb29576b158............" # this must be the same as SOLVER_PK
     NODE_URL="ws://3.238.30.234:8546"
 ```
-
-## TLS certificate
-  you need to put the certificates in `/tmp` dir so the programs can connect to the gateway
-  ```
-    let cert_path = "/tmp/external_gateway_cert.pem";
-    let key_path = "/tmp/external_gateway_key.pem";
-  ```

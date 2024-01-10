@@ -15,7 +15,7 @@ use futures::StreamExt;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::protocol::Message;
-use crate::gateway::{IntentSolutionsRequest};
+use crate::gateway::{IntentSolutionsRequestData, IntentSolutionsRequest};
 
 
 pub async fn process_intent_solutions(
@@ -41,9 +41,12 @@ pub async fn process_intent_solutions(
     signature_with_recovery.push(signature_and_recovery.0.to_i32() as u8);
 
     let message = IntentSolutionsRequest {
-        dapp_address: dapp_address.clone(),
+        sender_address: dapp_address.clone(),
+        data: Some(IntentSolutionsRequestData{
+            dapp_address: dapp_address.clone(),
+            nonce: "1".to_string(),
+        }),
         hash: hash.to_vec(),
-        // auth_header: auth_header,
         signature: signature_with_recovery,
     };
 

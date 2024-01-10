@@ -18,7 +18,7 @@ use num_traits::cast::FromPrimitive;
 use serde_json::to_string;
 use eyre::Context;
 
-use crate::gateway::{SubmitIntentSolutionRequest};
+use crate::gateway::{SubmitIntentSolutionRequest, SubmitIntentSolutionRequestData};
 
 #[tokio::main]
 
@@ -33,7 +33,7 @@ async fn main() {
     env::set_var("WALLET_ADDRESS", solver_public_key);
     env::set_var("NODE_URL", node_url);
     let client =  util::create_grpc_client(
-        auth_header.clone(), gateway_url
+        auth_header.clone(), gateway_url, false
     ).await;
 
     let _ = subscribe_to_gateway_intents(client, solver_pk, auth_header).await;
@@ -58,12 +58,15 @@ pub async fn subscribe_to_gateway_intents(mut client: GatewayClient<InterceptedS
     signature_with_recovery.append(&mut signature_and_recovery.1.to_vec());
     signature_with_recovery.push(signature_and_recovery.0.to_i32() as u8);
     let message = gateway::IntentsRequest {
-        // auth_header: auth_header.clone(),
-        solver_address: solver_address.clone(),
+        sender_address: solver_address.clone(),
+        data: Some(gateway::IntentsRequestData{
+            solver_address: solver_address.clone(),
+            nonce: "1".to_string(),
+            filters: "".to_string(),
+            from_timestamp: None,
+        }),
         hash: hash.to_vec(),
         signature: signature_with_recovery,
-        // filters: "".to_string(),
-        from_timestamp: None,
     };
 
     let response = client.intents(message).await?;
@@ -146,10 +149,13 @@ async fn send_take_orders_to_gateway(
     signature_with_recovery.push(signature_and_recovery.0.to_i32() as u8);
 
     let message = SubmitIntentSolutionRequest {
-        // auth_header: auth_header,
-        solver_address:  util::public_key_to_address(pk),
-        intent_id: intent_id.to_string(),
-        intent_solution: solution_bytes.into_bytes(),
+        sender_address: util::public_key_to_address(pk),
+        data: Some(SubmitIntentSolutionRequestData{
+            solver_address: util::public_key_to_address(pk),
+            nonce: "1".to_string(),
+            intent_id: intent_id.to_string(),
+            intent_solution: solution_bytes.into_bytes(),
+        }),
         hash: solution_hash.to_vec(),
         signature: signature_with_recovery,
     };
