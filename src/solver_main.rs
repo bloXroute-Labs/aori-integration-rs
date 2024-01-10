@@ -17,6 +17,7 @@ use crate::types::{AoriMakeOrder, AoriMakeOrderIntent, AoriTakeOrderIntent, Blxr
 use num_traits::cast::FromPrimitive;
 use serde_json::to_string;
 use eyre::Context;
+use prost::Message;
 
 use crate::gateway::{SubmitIntentSolutionRequest, SubmitIntentSolutionRequestData};
 
@@ -47,9 +48,17 @@ pub async fn subscribe_to_gateway_intents(mut client: GatewayClient<InterceptedS
     let pk = secp256k1::PublicKey::from_secret_key(&secp, &sk);
 
     let solver_address = util::public_key_to_address(pk);
-    let hash = Keccak256::digest(solver_address.clone());
 
-    let msg = secp256k1::Message::from_slice(&hash).unwrap();
+    let data_obj = gateway::IntentsRequestData{
+        solver_address: solver_address.clone(),
+        nonce: "1".to_string(),
+        filters: "".to_string(),
+        from_timestamp: None,
+    };
+    let mut data_bytes = Vec::new();
+    data_obj.encode(&mut data_bytes).expect("Failed to serialize");
+    let data_hash = Keccak256::digest(data_bytes);
+    let msg = secp256k1::Message::from_slice(&data_hash).unwrap();
     let intent_sig = secp.sign_ecdsa_recoverable(&msg, &sk);
 
     let mut signature_with_recovery: Vec<u8> = vec![];
@@ -59,13 +68,8 @@ pub async fn subscribe_to_gateway_intents(mut client: GatewayClient<InterceptedS
     signature_with_recovery.push(signature_and_recovery.0.to_i32() as u8);
     let message = gateway::IntentsRequest {
         sender_address: solver_address.clone(),
-        data: Some(gateway::IntentsRequestData{
-            solver_address: solver_address.clone(),
-            nonce: "1".to_string(),
-            filters: "".to_string(),
-            from_timestamp: None,
-        }),
-        hash: hash.to_vec(),
+        data: Some(data_obj),
+        hash: data_hash.to_vec(),
         signature: signature_with_recovery,
     };
 
@@ -132,14 +136,22 @@ async fn send_take_orders_to_gateway(
         &seat_id,
         &chain_id,
     );
+
     let solution_bytes = to_string(&take_order_payload.unwrap()).expect("Serialization failed");
 
     let secp = secp256k1::Secp256k1::new();
     let sk = secp256k1::SecretKey::from_str(&solver_private_key).unwrap();
     let pk = secp256k1::PublicKey::from_secret_key(&secp, &sk);
-
-    let solution_hash = Keccak256::digest(solution_bytes.clone());
-    let msg = secp256k1::Message::from_slice(&solution_hash).unwrap();
+    let data_obj = SubmitIntentSolutionRequestData{
+        solver_address: util::public_key_to_address(pk),
+        nonce: "1".to_string(),
+        intent_id: intent_id.to_string(),
+        intent_solution: solution_bytes.into_bytes(),
+    };
+    let mut data_bytes = Vec::new();
+    data_obj.encode(&mut data_bytes).expect("Failed to serialize");
+    let data_hash = Keccak256::digest(data_bytes.clone());
+    let msg = secp256k1::Message::from_slice(&data_hash).unwrap();
     let intent_sig = secp.sign_ecdsa_recoverable(&msg, &sk);
 
     let mut signature_with_recovery: Vec<u8> = vec![];
@@ -150,13 +162,8 @@ async fn send_take_orders_to_gateway(
 
     let message = SubmitIntentSolutionRequest {
         sender_address: util::public_key_to_address(pk),
-        data: Some(SubmitIntentSolutionRequestData{
-            solver_address: util::public_key_to_address(pk),
-            nonce: "1".to_string(),
-            intent_id: intent_id.to_string(),
-            intent_solution: solution_bytes.into_bytes(),
-        }),
-        hash: solution_hash.to_vec(),
+        data: Some(data_obj),
+        hash: data_hash.to_vec(),
         signature: signature_with_recovery,
     };
 

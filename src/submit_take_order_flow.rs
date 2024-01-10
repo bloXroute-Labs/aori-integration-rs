@@ -12,26 +12,33 @@ use futures::stream::{SplitSink, SplitStream};
 use tokio_tungstenite::MaybeTlsStream;
 use tokio_tungstenite::WebSocketStream;
 use futures::StreamExt;
+use prost::Message;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
-use tokio_tungstenite::tungstenite::protocol::Message;
-use crate::gateway::{IntentSolutionsRequestData, IntentSolutionsRequest};
+use crate::gateway::{IntentSolutionsRequestData, IntentSolutionsRequest, SubmitIntentRequestData};
 
 
 pub async fn process_intent_solutions(
     mut client: GatewayClient<InterceptedService<Channel, types::BlxrCredentials>>,
     bundler_private_key: String,
     auth_header: String,
-    write_stream: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>) -> Result<(), Box<dyn std::error::Error>> {
+    write_stream: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, tokio_tungstenite::tungstenite::protocol::Message>) -> Result<(), Box<dyn std::error::Error>> {
 
     let secp = secp256k1::Secp256k1::new();
     let sk = secp256k1::SecretKey::from_str(&bundler_private_key).unwrap();
     let pk = secp256k1::PublicKey::from_secret_key(&secp, &sk);
 
     let dapp_address = util::public_key_to_address(pk);
-    let hash = Keccak256::digest(dapp_address.clone());
 
-    let msg = secp256k1::Message::from_slice(&hash).unwrap();
+    let data_obj = IntentSolutionsRequestData{
+        dapp_address: dapp_address.clone(),
+        nonce: "1".to_string(),
+    };
+
+    let mut data_bytes = Vec::new();
+    data_obj.encode(&mut data_bytes).expect("Failed to serialize");
+    let data_hash = Keccak256::digest(data_bytes);
+    let msg = secp256k1::Message::from_slice(&data_hash).unwrap();
     let intent_sig = secp.sign_ecdsa_recoverable(&msg, &sk);
 
     let mut signature_with_recovery: Vec<u8> = vec![];
@@ -42,11 +49,8 @@ pub async fn process_intent_solutions(
 
     let message = IntentSolutionsRequest {
         sender_address: dapp_address.clone(),
-        data: Some(IntentSolutionsRequestData{
-            dapp_address: dapp_address.clone(),
-            nonce: "1".to_string(),
-        }),
-        hash: hash.to_vec(),
+        data: Some(data_obj),
+        hash: data_hash.to_vec(),
         signature: signature_with_recovery,
     };
 
@@ -88,9 +92,9 @@ pub async fn start_read_thread_from_aori(mut read_stream: SplitStream<WebSocketS
 }
 
 pub async fn send_take_orders_aori(
-    mut write_stream: Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>>>,
+    mut write_stream: Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, tokio_tungstenite::tungstenite::protocol::Message>>>,
     take_order_request: Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
-    let request_message = Message::Binary(take_order_request);
+    let request_message = tokio_tungstenite::tungstenite::protocol::Message::Binary(take_order_request);
     let res = write_stream.lock().await.send(request_message).await;
     match res {
         Ok(_) => {
