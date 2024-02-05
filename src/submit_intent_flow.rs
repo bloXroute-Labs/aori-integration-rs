@@ -6,13 +6,12 @@ use tonic::{transport::Channel, Status, Request, Response};
 use tonic::codegen::InterceptedService;
 use crate::{types, util};
 use aori_requests::requests::create_subscribe_orderbook_payload;
-use crate::gateway::{SubmitIntentReply, SubmitIntentRequest, SubmitIntentRequestData};
+use crate::gateway::{SubmitIntentReply, SubmitIntentRequest};
 use sha3::{Digest, Keccak256};
 use futures::SinkExt;
 use futures::StreamExt;
-use prost::Message;
 use tokio_tungstenite::connect_async;
-// use tokio_tungstenite::tungstenite::protocol::Message;
+use tokio_tungstenite::tungstenite::protocol::Message;
 
 pub async fn subscribe_to_make_orders(mut client: GatewayClient<InterceptedService<Channel, types::BlxrCredentials>>, bundler_private_key: String, aori_feed_endpoint: String) -> Result<(), Box<dyn std::error::Error>> {
     println!("subscribing to {} for make order updates", aori_feed_endpoint);
@@ -24,7 +23,7 @@ pub async fn subscribe_to_make_orders(mut client: GatewayClient<InterceptedServi
 
     let request_json = create_subscribe_orderbook_payload(&id);
     let request_text = request_json.to_string();
-    let request_message =  tokio_tungstenite::tungstenite::protocol::Message::Text(request_text);
+    let request_message = Message::Text(request_text);
 
     ws_stream.send(request_message).await?;
 
@@ -90,19 +89,10 @@ pub async fn submit_intent(mut client: GatewayClient<InterceptedService<Channel,
     let sk = secp256k1::SecretKey::from_str(&bundler_private_key).unwrap();
     let pk = secp256k1::PublicKey::from_secret_key(&secp, &sk);
 
-    let json_data = to_vec(&order).expect("Failed to serialize");
+    let json_data = to_vec(&order).expect("Failed to serialize to JSON");
 
-    let data_obj = SubmitIntentRequestData{
-        dapp_address:  util::public_key_to_address(pk),
-        nonce: "1".to_string(),
-        intent: json_data,
-        expiry_duration: None,
-    };
-
-    let mut data_bytes = Vec::new();
-    data_obj.encode(&mut data_bytes).expect("Failed to serialize");
-    let data_hash = Keccak256::digest(data_bytes);
-    let msg = secp256k1::Message::from_slice(&data_hash).unwrap();
+    let intent_hash = Keccak256::digest(json_data.clone());
+    let msg = secp256k1::Message::from_slice(&intent_hash).unwrap();
     let intent_sig = secp.sign_ecdsa_recoverable(&msg, &sk);
 
     let mut signature_with_recovery: Vec<u8> = vec![];
@@ -112,9 +102,10 @@ pub async fn submit_intent(mut client: GatewayClient<InterceptedService<Channel,
     signature_with_recovery.push(signature_and_recovery.0.to_i32() as u8);
 
     let message = SubmitIntentRequest {
+        dapp_address:  util::public_key_to_address(pk),
         sender_address: util::public_key_to_address(pk),
-        data: Some(data_obj),
-        hash: data_hash.to_vec(),
+        intent: json_data,
+        hash: intent_hash.to_vec(),
         signature: signature_with_recovery,
     };
     let res = client.submit_intent(message).await;
